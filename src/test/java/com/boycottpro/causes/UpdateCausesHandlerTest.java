@@ -4,6 +4,7 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.boycottpro.models.Causes;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +16,8 @@ import software.amazon.awssdk.services.dynamodb.model.*;
 import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import java.lang.reflect.Field;
+import java.util.HashMap;
 
 @ExtendWith(MockitoExtension.class)
 public class UpdateCausesHandlerTest {
@@ -55,6 +58,20 @@ public class UpdateCausesHandlerTest {
         assertTrue(item.containsKey("cause_id"), "New cause_id should be generated");
         assertEquals("Environmental", item.get("cause_desc").s());
         assertEquals("Environment", item.get("category").s());
+    }
+
+    @Test
+    void testInsertInvalidNewCause() throws Exception {
+        Causes newCause = new Causes();
+        newCause.setCause_desc("Environment");
+        newCause.setCategory("Environment");
+        newCause.setFollower_count(-1);
+
+        APIGatewayProxyRequestEvent requestEvent = new APIGatewayProxyRequestEvent()
+                .withBody(objectMapper.writeValueAsString(newCause));
+        APIGatewayProxyResponseEvent response = handler.handleRequest(requestEvent, context);
+
+        assertEquals(400, response.getStatusCode());
     }
 
     @Test
@@ -129,4 +146,22 @@ public class UpdateCausesHandlerTest {
         assertEquals(500, response.getStatusCode());
         assertTrue(response.getBody().contains("Unexpected server error"));
     }
+
+    @Test
+    public void testDefaultConstructor() {
+        // Test the default constructor coverage
+        UpdateCausesHandler handler = new UpdateCausesHandler();
+        assertNotNull(handler);
+
+        // Verify DynamoDbClient was created (using reflection to access private field)
+        try {
+            Field dynamoDbField = UpdateCausesHandler.class.getDeclaredField("dynamoDb");
+            dynamoDbField.setAccessible(true);
+            DynamoDbClient dynamoDb = (DynamoDbClient) dynamoDbField.get(handler);
+            assertNotNull(dynamoDb);
+        } catch (Exception e) {
+            fail("Failed to verify DynamoDbClient creation: " + e.getMessage());
+        }
+    }
+
 }

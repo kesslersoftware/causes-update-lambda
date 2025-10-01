@@ -32,7 +32,8 @@ public class UpdateCausesHandler implements RequestHandler<APIGatewayProxyReques
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent event, Context context) {
         try {
             Causes input = objectMapper.readValue(event.getBody(), Causes.class);
-            boolean validInput = checkCause(input);
+            boolean validInput = input.getCause_desc()!=null && !input.getCause_desc().isEmpty() &&
+                    input.getFollower_count()>=0;
             if(!validInput) {
                 return new APIGatewayProxyResponseEvent()
                         .withStatusCode(400)
@@ -64,13 +65,6 @@ public class UpdateCausesHandler implements RequestHandler<APIGatewayProxyReques
                     .withStatusCode(500)
                     .withBody("{\"error\": \"Unexpected server error: " + e.getMessage() + "\"}");
         }
-    }
-    private boolean checkCause(Causes cause) {
-        if(cause.getCause_desc()==null || cause.getCause_desc().isEmpty() ||
-                cause.getFollower_count()<0 ) {
-            return false;
-        }
-        return true;
     }
     private boolean insertCause(Causes cause) {
         // Generate a new UUID for the cause_id
